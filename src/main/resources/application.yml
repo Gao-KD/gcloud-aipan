@@ -36,3 +36,4 @@ minio:
   access-key: minio_gaokd
   access-secret: minio_gaokd123
   bucket-name: ai-pan
+  avatar-bucket-name: avatar

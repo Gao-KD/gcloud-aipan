@@ -4,10 +4,8 @@ import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.AccountRegisterReq;
 import net.gaokd.gcloudaipan.service.AccountService;
 import net.gaokd.gcloudaipan.util.JsonData;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @ClassName: AccountController
@@ -26,8 +24,17 @@ public class AccountController {
      * 注册接口
      */
     @PostMapping("/register")
-    public JsonData register(@RequestBody AccountRegisterReq req){
+    public JsonData register(@RequestBody AccountRegisterReq req) {
         accountService.register(req);
         return JsonData.buildSuccess();
+    }
+
+    /**
+     * 头像上传接口
+     */
+    @PostMapping("/upload_avatar")
+    public JsonData uploadAvatar(@RequestParam("file") MultipartFile file){
+        String url = accountService.uploadAvatar(file);
+        return JsonData.buildSuccess(url);
     }
 }

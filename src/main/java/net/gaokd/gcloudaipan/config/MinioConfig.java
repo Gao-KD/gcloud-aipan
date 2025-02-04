@@ -21,14 +21,17 @@ public class MinioConfig {
     @Value("endpoint")
     private String endpoint;
 
-    @Value("accessKey")
+    @Value("access-key")
     private String accessKey;
 
-    @Value("accessSecret")
+    @Value("access-secret")
     private String accessSecret;
 
-    @Value("bucketName")
+    @Value("bucket-name")
     private String bucketName;
+
+    @Value("avatar-bucket-name")
+    private String avatarBucketName;
 
     //预签名url的过期时间 ms
     private Long PRE_SINGLE_URL_EXPIRE_TIME = 10 * 60 * 1000L;

@@ -2,6 +2,7 @@ package net.gaokd.gcloudaipan.service;
 
 import net.gaokd.gcloudaipan.controller.req.AccountRegisterReq;
 import net.gaokd.gcloudaipan.util.JsonData;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @ClassName: AccountService
@@ -12,4 +13,7 @@ import net.gaokd.gcloudaipan.util.JsonData;
 public interface AccountService {
     //注册
     void register(AccountRegisterReq req);
+
+    //上传头像
+    String uploadAvatar(MultipartFile file);
 }
