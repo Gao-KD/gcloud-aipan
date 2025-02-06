@@ -1,6 +1,8 @@
 package net.gaokd.gcloudaipan.service;
 
+import net.gaokd.gcloudaipan.controller.req.AccountLoginReq;
 import net.gaokd.gcloudaipan.controller.req.AccountRegisterReq;
+import net.gaokd.gcloudaipan.dto.AccountDTO;
 import net.gaokd.gcloudaipan.util.JsonData;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,4 +18,7 @@ public interface AccountService {
 
     //上传头像
     String uploadAvatar(MultipartFile file);
+
+    //登录
+    AccountDTO login(AccountLoginReq req);
 }
