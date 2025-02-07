@@ -1,6 +1,9 @@
 package net.gaokd.gcloudaipan.service;
 
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
+import net.gaokd.gcloudaipan.dto.AccountFileDTO;
+
+import java.util.List;
 
 /**
  * @ClassName: AccountFileService
@@ -10,5 +13,9 @@ import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
  */
 public interface AccountFileService {
     //创建文件夹
-    void createFolder(FolderCreateReq folderCreateReq);
+    Long createFolder(FolderCreateReq folderCreateReq);
+
+    //获取文件列表
+    List<AccountFileDTO> listFile(Long accountId, Long parentId);
+
 }
