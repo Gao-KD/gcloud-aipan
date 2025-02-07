@@ -1,5 +1,6 @@
 package net.gaokd.gcloudaipan.controller.req;
 
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Data;
  * @Version: V1.0
  */
 @Data
+@Builder
 public class AccountRegisterReq {
 
     /**

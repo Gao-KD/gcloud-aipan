@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.AccountLoginReq;
 import net.gaokd.gcloudaipan.controller.req.AccountRegisterReq;
 import net.gaokd.gcloudaipan.dto.AccountDTO;
+import net.gaokd.gcloudaipan.interceptor.LoginInterceptor;
 import net.gaokd.gcloudaipan.service.AccountService;
 import net.gaokd.gcloudaipan.util.JsonData;
 import net.gaokd.gcloudaipan.util.JwtUtil;
@@ -50,5 +51,13 @@ public class AccountController {
         //生成token,前端一般保存在localStorage里面或sessionStorage;
         String token = JwtUtil.geneLoginJWT(dto);
         return JsonData.buildSuccess(token);
+    }
+    /**
+     * 获取用户详情接口
+     */
+    @GetMapping("/detail")
+    public JsonData detail() {
+        AccountDTO accountDTO = accountService.queryDetail(LoginInterceptor.threadLocal.get().getId());
+        return JsonData.buildSuccess(accountDTO);
     }
 }

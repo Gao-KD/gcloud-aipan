@@ -4,6 +4,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.mapper.AccountFileMapper;
+import net.gaokd.gcloudaipan.model.AccountFileDO;
 import net.gaokd.gcloudaipan.model.FileDO;
 import net.gaokd.gcloudaipan.service.AccountFileService;
 import org.springframework.stereotype.Service;

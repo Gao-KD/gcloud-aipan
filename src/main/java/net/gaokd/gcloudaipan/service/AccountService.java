@@ -21,4 +21,7 @@ public interface AccountService {
 
     //登录
     AccountDTO login(AccountLoginReq req);
+
+    //用户详情
+    AccountDTO queryDetail(Long accountId);
 }
