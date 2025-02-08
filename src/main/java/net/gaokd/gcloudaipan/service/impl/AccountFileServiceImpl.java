@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
+import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.enums.BizCodeEnum;
 import net.gaokd.gcloudaipan.enums.FolderFlagEnum;
 import net.gaokd.gcloudaipan.exception.BizException;
@@ -16,8 +17,11 @@ import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * @ClassName: AccountFileServiceImpl
@@ -84,6 +88,51 @@ public class AccountFileServiceImpl implements AccountFileService {
             }
         }
 
+    }
+
+    /**
+     * 文件树接口（非递归方式）
+     * 1、查询用户全部文件夹
+     * 2、拼装文件树
+     * 通过从子节点开始添加到父节点
+     * @param accountId
+     * @return
+     */
+    @Override
+    public List<FolderTreeNodeDTO> folderTree(Long accountId) {
+        List<AccountFileDO> folderList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                .eq(AccountFileDO::getAccountId, accountId)
+                .eq(AccountFileDO::getIsDir, FolderFlagEnum.YES.getCode()));
+        if (folderList.isEmpty()) {
+            return List.of();
+        }
+        //数据源
+        //构建一个map接口，key为文件夹ID，value为文件对象FolderTreeNodeDTO
+        Map<Long, FolderTreeNodeDTO> folderTreeNodeDTOMap = folderList.stream().collect(Collectors.toMap(
+                AccountFileDO::getId, accountFileDO ->
+                        FolderTreeNodeDTO.builder()
+                                .id(accountFileDO.getId())
+                                .parentId(accountFileDO.getParentId())
+                                .label(accountFileDO.getFileName())
+                                .children(new ArrayList<>())
+                                .build()
+
+        ));
+        //构建文件树，遍历数据源，为每个文件夹找到其子文件夹
+        for (FolderTreeNodeDTO node : folderTreeNodeDTOMap.values()){
+            Long parentId = node.getParentId();
+            if (parentId != null && folderTreeNodeDTOMap.containsKey(parentId)){
+                //父节点
+                FolderTreeNodeDTO folderTreeNodeDTO = folderTreeNodeDTOMap.get(parentId);
+                folderTreeNodeDTO.getChildren().add(node);
+            }
+        }
+
+        //过滤出根节点，即parentId是0
+        List<FolderTreeNodeDTO> rootFolderList = folderTreeNodeDTOMap.values().stream()
+                .filter(node -> node.getParentId() == 0)
+                .collect(Collectors.toList());
+        return rootFolderList;
     }
 
     /**

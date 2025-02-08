@@ -3,6 +3,7 @@ package net.gaokd.gcloudaipan.service;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
+import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 
 import java.util.List;
 
@@ -21,4 +22,7 @@ public interface AccountFileService {
 
     //重命名文件
     void renameFile(FolderUpdateReq req);
+
+    //文件树接口
+    List<FolderTreeNodeDTO> folderTree(Long accountId);
 }

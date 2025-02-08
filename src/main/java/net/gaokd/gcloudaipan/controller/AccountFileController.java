@@ -6,6 +6,7 @@ import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
+import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.interceptor.LoginInterceptor;
 import net.gaokd.gcloudaipan.service.AccountFileService;
 import net.gaokd.gcloudaipan.util.JsonData;
@@ -64,11 +65,11 @@ public class AccountFileController {
     /**
      * 多层级文件树
      */
-    @GetMapping("tree")
+    @GetMapping("/folder/tree")
     @Operation(summary = "文件树", description = "获取文件树")
-    public JsonData tree() {
+    public JsonData folderTree() {
         Long accountId = LoginInterceptor.threadLocal.get().getId();
-//        List<AccountFileDTO> list = accountFileService.treeFile(accountId, 0L);
-        return JsonData.buildSuccess();
+        List<FolderTreeNodeDTO> list = accountFileService.folderTree(accountId);
+        return JsonData.buildSuccess(list);
     }
 }
