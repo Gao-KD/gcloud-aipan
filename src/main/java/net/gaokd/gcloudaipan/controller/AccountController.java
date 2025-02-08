@@ -13,6 +13,10 @@ import net.gaokd.gcloudaipan.util.JwtUtil;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+
 /**
  * @ClassName: AccountController
  * @Author: gkd
@@ -68,4 +72,5 @@ public class AccountController {
         AccountDTO accountDTO = accountService.queryDetail(LoginInterceptor.threadLocal.get().getId());
         return JsonData.buildSuccess(accountDTO);
     }
+
 }

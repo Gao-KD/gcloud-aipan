@@ -2,9 +2,7 @@ package net.gaokd.gcloudaipan.dto;
 
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -21,6 +19,8 @@ import java.util.Date;
 @Setter
 @Schema(name = "AccountFileDO", description = "用户文件表")
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class AccountFileDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;

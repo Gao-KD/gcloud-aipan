@@ -1,6 +1,5 @@
 package net.gaokd.gcloudaipan.service.impl;
 
-import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import jakarta.annotation.Resource;
@@ -26,7 +25,6 @@ import net.gaokd.gcloudaipan.service.AccountFileService;
 import net.gaokd.gcloudaipan.service.AccountService;
 import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
@@ -111,6 +109,7 @@ public class AccountServiceImpl implements AccountService {
                 .parentId(ROOT_PARENT_ID)
                 .folderName(ROOT_FOLDER_NAME)
                 .build();
+
         accountFileService.createFolder(folderCreateReq);
 
     }
@@ -125,7 +124,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AccountDTO login(AccountLoginReq req) {
         AccountDO accountDO = accountMapper.selectOne(new LambdaQueryWrapper<AccountDO>()
-                .eq(AccountDO::getUsername, req.getUsername()));
+                .eq(AccountDO::getPhone, req.getPhone()));
         if (accountDO == null) {
             throw new BizException(BizCodeEnum.ACCOUNT_UNREGISTER);
         }

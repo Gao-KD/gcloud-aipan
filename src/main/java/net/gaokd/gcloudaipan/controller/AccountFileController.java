@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
+import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.interceptor.LoginInterceptor;
 import net.gaokd.gcloudaipan.service.AccountFileService;
@@ -47,5 +48,27 @@ public class AccountFileController {
         req.setAccountId(accountId);
         Long folderId = accountFileService.createFolder(req);
         return JsonData.buildSuccess(folderId);
+    }
+    /**
+     * 文件重命名
+     */
+    @PostMapping("rename")
+    @Operation(summary = "文件重命名", description = "重命名一个文件")
+    public JsonData rename(@RequestBody FolderUpdateReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        accountFileService.renameFile(req);
+        return JsonData.buildSuccess();
+    }
+
+    /**
+     * 多层级文件树
+     */
+    @GetMapping("tree")
+    @Operation(summary = "文件树", description = "获取文件树")
+    public JsonData tree() {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+//        List<AccountFileDTO> list = accountFileService.treeFile(accountId, 0L);
+        return JsonData.buildSuccess();
     }
 }

@@ -1,6 +1,5 @@
 package net.gaokd.gcloudaipan;
 
-import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.AccountLoginReq;
 import net.gaokd.gcloudaipan.controller.req.AccountRegisterReq;
 import net.gaokd.gcloudaipan.dto.AccountDTO;
@@ -35,7 +34,7 @@ public class AccountTest {
     @Test
     public void login(){
         AccountLoginReq req = AccountLoginReq.builder()
-                .username("gaokd")
+                .phone("gaokd")
                 .password("12345678")
                 .build();
         AccountDTO loginDTO = accountService.login(req);

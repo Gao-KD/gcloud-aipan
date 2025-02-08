@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
+import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.enums.BizCodeEnum;
 import net.gaokd.gcloudaipan.enums.FolderFlagEnum;
@@ -11,10 +12,12 @@ import net.gaokd.gcloudaipan.exception.BizException;
 import net.gaokd.gcloudaipan.mapper.AccountFileMapper;
 import net.gaokd.gcloudaipan.model.AccountFileDO;
 import net.gaokd.gcloudaipan.service.AccountFileService;
+import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @ClassName: AccountFileServiceImpl
@@ -40,9 +43,47 @@ public class AccountFileServiceImpl implements AccountFileService {
     public List<AccountFileDTO> listFile(Long accountId, Long parentId) {
         List<AccountFileDO> accountFileDOList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
                 .eq(AccountFileDO::getAccountId, accountId)
-                .eq(AccountFileDO::getId, parentId)
+                .eq(AccountFileDO::getParentId, parentId)
                 .orderByDesc(AccountFileDO::getIsDir, AccountFileDO::getGmtCreate));
         return SpringBeanUtil.copyProperties(accountFileDOList, AccountFileDTO.class);
+    }
+
+    /**
+     * 重命名文件
+     * 1、校验文件是否存子啊
+     * 2、新旧文件名是否重复
+     * 3、同层文件名称不能一样
+     *
+     * @param req
+     */
+    @Override
+    public void renameFile(FolderUpdateReq req) {
+        AccountFileDO accountFileDO = accountFileMapper.selectOne(new LambdaQueryWrapper<AccountFileDO>()
+                .eq(AccountFileDO::getId, req.getFileId())
+                .eq(AccountFileDO::getAccountId, req.getAccountId()));
+        if (accountFileDO == null) {
+            log.error("文件不存在:{}", req);
+            throw new BizException(BizCodeEnum.FILE_NOT_EXISTS);
+        } else {
+            //新旧文件名称不能一样
+            if (Objects.equals(accountFileDO.getFileName(), req.getNewFileName())) {
+                log.error("文件名称重复,{}", req);
+                throw new BizException(BizCodeEnum.FILE_RENAME_REPEAT);
+            }
+            //同层文件名称不能一样
+            Long count = accountFileMapper.selectCount(new LambdaQueryWrapper<AccountFileDO>()
+                    .eq(AccountFileDO::getAccountId, req.getAccountId())
+                    .eq(AccountFileDO::getParentId, accountFileDO.getParentId())
+                    .eq(AccountFileDO::getFileName, req.getNewFileName()));
+            if (count > 0) {
+                log.error("文件名称重复,{}", req);
+                throw new BizException(BizCodeEnum.FILE_RENAME_REPEAT);
+            } else {
+                accountFileDO.setFileName(req.getNewFileName());
+                accountFileMapper.updateById(accountFileDO);
+            }
+        }
+
     }
 
     /**
@@ -86,7 +127,7 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param accountFileDTO
      */
     private void checkParentFileId(AccountFileDTO accountFileDTO) {
-        if (accountFileDTO.getParentId() != null) {
+        if (accountFileDTO.getParentId() != 0) {
             AccountFileDO accountFileDO = accountFileMapper.selectOne(new LambdaQueryWrapper<AccountFileDO>()
                     .eq(AccountFileDO::getAccountId, accountFileDTO.getAccountId())
                     .eq(AccountFileDO::getId, accountFileDTO.getParentId()));
@@ -111,11 +152,11 @@ public class AccountFileServiceImpl implements AccountFileService {
         if (count > 0) {
             //处理重复文件夹
             if (accountFileDO.getIsDir().equals(FolderFlagEnum.YES.getCode())) {
-                accountFileDO.setFileName(accountFileDO.getFileName() + "(1)");
+                accountFileDO.setFileName(accountFileDO.getFileName() + "_" + System.currentTimeMillis());
             } else {
                 //处理重复文件名，提取文件扩展名
                 String[] split = accountFileDO.getFileName().split("\\.");
-                accountFileDO.setFileName(split[0] + "(1)" + split[1]);
+                accountFileDO.setFileName(split[0] + "_" + System.currentTimeMillis() + split[1]);
             }
         }
     }

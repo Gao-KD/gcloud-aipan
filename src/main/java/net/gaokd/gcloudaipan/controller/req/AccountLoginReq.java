@@ -15,10 +15,10 @@ import lombok.Data;
 @Schema(description = "用户登录请求对象")
 public class AccountLoginReq {
     /**
-     * 用户名
+     * 手机号
      */
-    @Schema(description = "用户名", required = true, example = "user123")
-    private String username;
+    @Schema(description = "手机号", required = true, example = "user123")
+    private String phone;
 
     /**
      * 密码
