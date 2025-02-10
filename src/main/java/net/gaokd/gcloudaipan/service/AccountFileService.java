@@ -1,5 +1,6 @@
 package net.gaokd.gcloudaipan.service;
 
+import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
@@ -25,4 +26,10 @@ public interface AccountFileService {
 
     //文件树接口
     List<FolderTreeNodeDTO> folderTree(Long accountId);
+
+    //文件树接口v2
+    List<FolderTreeNodeDTO> folderTreeV2(Long accountId);
+
+    //小文件上传接口
+    void fileUpload(FileUploadReq req);
 }

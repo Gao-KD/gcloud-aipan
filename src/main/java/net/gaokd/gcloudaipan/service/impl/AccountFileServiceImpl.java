@@ -1,20 +1,29 @@
 package net.gaokd.gcloudaipan.service.impl;
 
+import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import net.gaokd.gcloudaipan.component.StoreEngine;
+import net.gaokd.gcloudaipan.config.MinioConfig;
+import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.enums.BizCodeEnum;
+import net.gaokd.gcloudaipan.enums.FileTypeEnum;
 import net.gaokd.gcloudaipan.enums.FolderFlagEnum;
 import net.gaokd.gcloudaipan.exception.BizException;
 import net.gaokd.gcloudaipan.mapper.AccountFileMapper;
+import net.gaokd.gcloudaipan.mapper.FileMapper;
 import net.gaokd.gcloudaipan.model.AccountFileDO;
+import net.gaokd.gcloudaipan.model.FileDO;
 import net.gaokd.gcloudaipan.service.AccountFileService;
+import net.gaokd.gcloudaipan.service.FileService;
 import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,6 +44,17 @@ public class AccountFileServiceImpl implements AccountFileService {
 
     @Resource
     private AccountFileMapper accountFileMapper;
+
+    @Resource
+    private StoreEngine fileStoreEngine;
+
+    @Resource
+    private MinioConfig minioConfig;
+
+    @Resource
+    private FileMapper fileMapper;
+    @Autowired
+    private FileService fileService;
 
     /**
      * 查询文件列表
@@ -95,6 +115,7 @@ public class AccountFileServiceImpl implements AccountFileService {
      * 1、查询用户全部文件夹
      * 2、拼装文件树
      * 通过从子节点开始添加到父节点
+     *
      * @param accountId
      * @return
      */
@@ -119,9 +140,9 @@ public class AccountFileServiceImpl implements AccountFileService {
 
         ));
         //构建文件树，遍历数据源，为每个文件夹找到其子文件夹
-        for (FolderTreeNodeDTO node : folderTreeNodeDTOMap.values()){
+        for (FolderTreeNodeDTO node : folderTreeNodeDTOMap.values()) {
             Long parentId = node.getParentId();
-            if (parentId != null && folderTreeNodeDTOMap.containsKey(parentId)){
+            if (parentId != null && folderTreeNodeDTOMap.containsKey(parentId)) {
                 //父节点
                 FolderTreeNodeDTO folderTreeNodeDTO = folderTreeNodeDTOMap.get(parentId);
                 folderTreeNodeDTO.getChildren().add(node);
@@ -134,6 +155,105 @@ public class AccountFileServiceImpl implements AccountFileService {
                 .collect(Collectors.toList());
         return rootFolderList;
     }
+
+    @Override
+    public List<FolderTreeNodeDTO> folderTreeV2(Long accountId) {
+        List<AccountFileDO> folderList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                .eq(AccountFileDO::getAccountId, accountId)
+                .eq(AccountFileDO::getIsDir, FolderFlagEnum.YES.getCode()));
+        if (folderList.isEmpty()) {
+            return List.of();
+        }
+        //数据源
+        List<FolderTreeNodeDTO> folderTreeNodeDTOS = folderList.stream().map(file -> {
+            return FolderTreeNodeDTO.builder()
+                    .id(file.getId())
+                    .parentId(file.getParentId())
+                    .label(file.getFileName())
+                    .children(new ArrayList<>())
+                    .build();
+        }).toList();
+
+        //根据父文件id分组，构建文件树，key为当前文件夹id，value为对应子文件夹列表
+        Map<Long, List<FolderTreeNodeDTO>> parentIdMap = folderTreeNodeDTOS.stream()
+                .collect(Collectors.groupingBy(FolderTreeNodeDTO::getParentId));
+        for (FolderTreeNodeDTO node : folderTreeNodeDTOS) {
+            List<FolderTreeNodeDTO> children = parentIdMap.get(node.getId());
+            if (!CollectionUtil.isEmpty(children)) {
+                node.getChildren().addAll(children);
+            }
+        }
+        //过滤出根节点,即parentId=0的
+        return folderTreeNodeDTOS.stream().filter(node -> node.getParentId() == 0L).toList();
+    }
+
+    /**
+     * 小文件上传
+     * 1、保存文件到存储引擎
+     * 2、保存文件关系
+     * 3、保存文件账号关系
+     *
+     * @param req
+     */
+    @Override
+    public void fileUpload(FileUploadReq req) {
+        //上传到存储引擎
+        String storeFileObjectKey = storeFile(req);
+        saveFileAndAccountFile(req,storeFileObjectKey);
+    }
+
+    /**
+     * 保存文件关系和账号文件关系到数据库
+     */
+    public void saveFileAndAccountFile(FileUploadReq req, String storeFileObjectKey) {
+        //保存文件
+        FileDO fileDO = saveFile(req,storeFileObjectKey);
+        //保存文件和账号关系
+        AccountFileDTO accountFileDTO = AccountFileDTO.builder()
+                .fileId(fileDO.getId())
+                .fileSize(fileDO.getFileSize())
+                .fileSuffix(fileDO.getFileSuffix())
+                .fileName(fileDO.getFileName())
+                //通过枚举类获取文件类型
+                .fileType(FileTypeEnum.fromExtension(fileDO.getFileSuffix()).name())
+                .accountId(req.getAccountId())
+                .parentId(req.getParentId())
+                .isDir(FolderFlagEnum.NO.getCode())
+                .build();
+        saveAccountFile(accountFileDTO);
+    }
+
+    /**
+     * 保存文件关系到数据库
+     * @param req
+     * @param storeFileObjectKey
+     * @return
+     */
+    private FileDO saveFile(FileUploadReq req, String storeFileObjectKey) {
+        FileDO fileDO = new FileDO();
+        fileDO.setAccountId(req.getAccountId());
+        fileDO.setFileName(req.getFileName());
+        fileDO.setFileSuffix(CommonUtil.getFileSuffix(req.getFile().getOriginalFilename()));
+        fileDO.setFileSize(req.getFile() != null ? req.getFile().getSize() : req.getFileSize());
+        fileDO.setIdentifier(req.getIdentifier());
+        fileDO.setObjectKey(storeFileObjectKey);
+        fileMapper.insert(fileDO);
+        return fileDO;
+    }
+
+    /**
+     * 存储文件返回唯一标识
+     *
+     * @param req
+     * @return
+     */
+    private String storeFile(FileUploadReq req) {
+        String objectKey = CommonUtil.getFilePath(req.getFile().getOriginalFilename());
+        fileStoreEngine.upload(minioConfig.getBucketName(), objectKey, req.getFile());
+        return objectKey;
+    }
+
+    //再写一个文件树接口V3，多数据情况下采用递归的方式遍历
 
     /**
      * 创建文件夹

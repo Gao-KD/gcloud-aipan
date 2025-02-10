@@ -8,4 +8,6 @@ package net.gaokd.gcloudaipan.service;
  */
 public interface FileService {
 
+    //获取文件类型
+    String fileType(String fileSuffix);
 }

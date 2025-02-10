@@ -3,6 +3,7 @@ package net.gaokd.gcloudaipan.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
@@ -72,4 +73,17 @@ public class AccountFileController {
         List<FolderTreeNodeDTO> list = accountFileService.folderTree(accountId);
         return JsonData.buildSuccess(list);
     }
+
+    /**
+     * 小文件上传
+     */
+    @PostMapping("upload")
+    @Operation(summary = "小文件上传", description = "上传一个小文件")
+    public JsonData upload(FileUploadReq req){
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        accountFileService.fileUpload(req);
+        return JsonData.buildSuccess();
+    }
+
 }

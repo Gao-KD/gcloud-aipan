@@ -30,7 +30,7 @@ public class JwtUtil {
     private final static SecureDigestAlgorithm<SecretKey, SecretKey> ALGORITHM = Jwts.SIG.HS256;
     // 使用密钥
     private final static SecretKey KEY = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
-    // token过期时间，30天
+    // token过期时间，7天
     private static final long EXPIRED = 1000 * 60 * 60 * 24 * 7;
 
     /**
