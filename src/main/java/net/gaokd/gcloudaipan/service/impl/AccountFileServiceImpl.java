@@ -2,10 +2,12 @@ package net.gaokd.gcloudaipan.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import net.gaokd.gcloudaipan.component.StoreEngine;
 import net.gaokd.gcloudaipan.config.MinioConfig;
+import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
 import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
@@ -25,11 +27,9 @@ import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -196,10 +196,122 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param req
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void fileUpload(FileUploadReq req) {
         //上传到存储引擎
         String storeFileObjectKey = storeFile(req);
-        saveFileAndAccountFile(req,storeFileObjectKey);
+        saveFileAndAccountFile(req, storeFileObjectKey);
+    }
+
+    /**
+     * 批量移动文件
+     * 1、校验文件列表id是否合法
+     * 2、校验目标文件夹id是否合法
+     * 3、批量移动处理文件重命名
+     * 4、更新
+     *
+     * @param req
+     */
+    @Override
+    public void moveBatch(FileBatchReq req) {
+        //检查被移动的文件ID是否合法
+        List<AccountFileDO> accountFileDOList = checkFileIdIllegal(req.getFileIds(), req.getAccountId());
+
+        //检查目标文件ID是否合法，包括子文件夹
+        checkTargetParentIdLegal(req);
+
+        //批量移动，处理文件重命名
+        accountFileDOList.forEach(this::processFileNameDuplicate);
+
+        //批量更新
+        int updateCount = accountFileMapper.update(new UpdateWrapper<AccountFileDO>()
+                .in("id", req.getFileIds())
+                .set("parent_id", req.getTargetParentId()));
+        if (updateCount != req.getFileIds().size()) {
+            log.error("文件移动失败");
+            throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+        }
+    }
+
+    /**
+     * 检查目标文件id是否合法，包括子文件夹
+     * 1、目标文件ID不能是文件
+     * 2、要操作的文件列表不能包含目标文件ID
+     *
+     * @param req
+     */
+    private void checkTargetParentIdLegal(FileBatchReq req) {
+        //1、目标文件ID不能是文件
+        AccountFileDO parentFileDO = accountFileMapper.selectOne(new LambdaQueryWrapper<AccountFileDO>()
+                .eq(AccountFileDO::getId, req.getTargetParentId())
+                .eq(AccountFileDO::getIsDir, FolderFlagEnum.YES.getCode()));
+        if (parentFileDO == null) {
+            log.error("文件批量移动不合法，目标id:{}", req.getTargetParentId());
+            throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+        }
+        /**
+         * 2、要操作的文件列表不能包含目标文件ID(***)
+         * 2.1、查询批量操作的文件和文件夹，递归处理
+         * 2.2、判断是否在里面
+         */
+        //2.1、查询批量操作的文件和文件夹
+        List<AccountFileDO> prepareAccountFileDOList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                .in(AccountFileDO::getId, req.getFileIds())
+                .eq(AccountFileDO::getAccountId, req.getAccountId()));
+
+        //2.2递归判断目标文件id是否在操作的目录下面
+        //定义一个容器存储全部文件夹，包括子文件夹
+        List<AccountFileDO> allAccountFileDOList = new ArrayList<>();
+
+        findAllAccountFileDOWithRecur(allAccountFileDOList,prepareAccountFileDOList,false);
+
+        //判断全部文件夹是否存在目标文件id
+        if (allAccountFileDOList.stream().anyMatch(accountFileDO -> Objects.equals(accountFileDO.getId(), req.getTargetParentId()))) {
+            log.error("文件批量移动不合法，目标id:{}", req.getTargetParentId());
+            throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+        }
+    }
+
+    /**
+     * 目标文件id是否在操作的文件目录下
+     * @param allAccountFileDOList
+     * @param prepareAccountFileDOList
+     * @param onlyFolder
+     */
+    private void findAllAccountFileDOWithRecur(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder) {
+        for (AccountFileDO prepare : prepareAccountFileDOList){
+            if (Objects.equals(prepare.getIsDir(),FolderFlagEnum.YES.getCode())){
+                List<AccountFileDO> children = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                        .eq(AccountFileDO::getParentId, prepare.getId()));
+
+                findAllAccountFileDOWithRecur(allAccountFileDOList, children, onlyFolder);
+            }
+
+            //如果onlyFolder是true，只存储文件夹到allAccountFileDOList，否则都存储到allAccountFileDOList
+            if (!onlyFolder || Objects.equals(prepare.getIsDir(), FolderFlagEnum.YES.getCode())){
+                allAccountFileDOList.add(prepare);
+            }
+        }
+    }
+
+
+    /**
+     * 校验文件列表id是否合法
+     *
+     * @param fileIds
+     * @param accountId
+     */
+    private List<AccountFileDO> checkFileIdIllegal(List<Long> fileIds, Long accountId) {
+        //更加严谨的操作是fileIds要去重
+        List<AccountFileDO> accountFileDOList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                .in(AccountFileDO::getId, fileIds)
+                .eq(AccountFileDO::getAccountId, accountId));
+        if (accountFileDOList.size() == fileIds.size()) {
+            return accountFileDOList;
+        } else {
+            log.error("文件ID数量不合法,ids:{}", accountFileDOList.size());
+            throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+        }
     }
 
     /**
@@ -207,7 +319,7 @@ public class AccountFileServiceImpl implements AccountFileService {
      */
     public void saveFileAndAccountFile(FileUploadReq req, String storeFileObjectKey) {
         //保存文件
-        FileDO fileDO = saveFile(req,storeFileObjectKey);
+        FileDO fileDO = saveFile(req, storeFileObjectKey);
         //保存文件和账号关系
         AccountFileDTO accountFileDTO = AccountFileDTO.builder()
                 .fileId(fileDO.getId())
@@ -225,6 +337,7 @@ public class AccountFileServiceImpl implements AccountFileService {
 
     /**
      * 保存文件关系到数据库
+     *
      * @param req
      * @param storeFileObjectKey
      * @return

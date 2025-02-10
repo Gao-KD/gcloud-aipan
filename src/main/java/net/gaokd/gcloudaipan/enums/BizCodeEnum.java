@@ -28,7 +28,8 @@ public enum BizCodeEnum {
     SHARE_CANCEL( 260406, "分享已取消"),
     SHARE_EXPIRED( 260407, "分享已过期"),
     SHARE_FILE_ILLEGAL( 260408, "分享的文件不合规"),
-    FILE_REMOTE_UPLOAD_FAILED(260409,"上传文件到minio异常" );
+    FILE_REMOTE_UPLOAD_FAILED(260409,"上传文件到minio异常" ),
+    FILE_UPDATE_BATCH_ERROR(270101, "文件批量操作失败");
 
     @Getter
     private String message;

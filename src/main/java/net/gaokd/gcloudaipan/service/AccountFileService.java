@@ -1,5 +1,6 @@
 package net.gaokd.gcloudaipan.service;
 
+import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
 import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
@@ -32,4 +33,7 @@ public interface AccountFileService {
 
     //小文件上传接口
     void fileUpload(FileUploadReq req);
+
+    //批量移动文件
+    void moveBatch(FileBatchReq req);
 }

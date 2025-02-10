@@ -3,6 +3,7 @@ package net.gaokd.gcloudaipan.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
 import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
 import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
 import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
@@ -83,6 +84,18 @@ public class AccountFileController {
         Long accountId = LoginInterceptor.threadLocal.get().getId();
         req.setAccountId(accountId);
         accountFileService.fileUpload(req);
+        return JsonData.buildSuccess();
+    }
+
+    /**
+     * 批量移动
+     */
+    @PostMapping("move_batch")
+    @Operation(summary = "批量移动", description = "批量移动文件")
+    public JsonData moveBatch(@RequestBody FileBatchReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        accountFileService.moveBatch(req);
         return JsonData.buildSuccess();
     }
 
