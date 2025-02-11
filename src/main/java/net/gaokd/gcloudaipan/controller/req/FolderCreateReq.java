@@ -34,6 +34,6 @@ public class FolderCreateReq {
     /**
      * 用户id
      */
-    @Schema(description = "用户ID", required = true, example = "67890")
+    @Schema(description = "用户ID", required = false, example = "67890")
     private Long accountId;
 }

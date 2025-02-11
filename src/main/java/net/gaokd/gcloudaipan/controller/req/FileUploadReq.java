@@ -21,7 +21,7 @@ public class FileUploadReq {
     @Schema(description = "标识符", required = true)
     private String identifier;
 
-    @Schema(description = "账户ID", required = true)
+    @Schema(description = "账户ID", required = false)
     private Long accountId;
 
     @Schema(description = "父目录ID", required = true)

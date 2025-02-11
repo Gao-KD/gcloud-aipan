@@ -7,10 +7,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import net.gaokd.gcloudaipan.component.StoreEngine;
 import net.gaokd.gcloudaipan.config.MinioConfig;
-import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
-import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
-import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
-import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
+import net.gaokd.gcloudaipan.controller.req.*;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.enums.BizCodeEnum;
@@ -19,13 +16,13 @@ import net.gaokd.gcloudaipan.enums.FolderFlagEnum;
 import net.gaokd.gcloudaipan.exception.BizException;
 import net.gaokd.gcloudaipan.mapper.AccountFileMapper;
 import net.gaokd.gcloudaipan.mapper.FileMapper;
+import net.gaokd.gcloudaipan.mapper.StorageMapper;
 import net.gaokd.gcloudaipan.model.AccountFileDO;
 import net.gaokd.gcloudaipan.model.FileDO;
+import net.gaokd.gcloudaipan.model.StorageDO;
 import net.gaokd.gcloudaipan.service.AccountFileService;
-import net.gaokd.gcloudaipan.service.FileService;
 import net.gaokd.gcloudaipan.util.CommonUtil;
 import net.gaokd.gcloudaipan.util.SpringBeanUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,8 +50,10 @@ public class AccountFileServiceImpl implements AccountFileService {
 
     @Resource
     private FileMapper fileMapper;
-    @Autowired
-    private FileService fileService;
+
+    @Resource
+    private StorageMapper storageMapper;
+
 
     /**
      * 查询文件列表
@@ -189,6 +188,7 @@ public class AccountFileServiceImpl implements AccountFileService {
 
     /**
      * 小文件上传
+     * 校验用户存储空间
      * 1、保存文件到存储引擎
      * 2、保存文件关系
      * 3、保存文件账号关系
@@ -198,9 +198,16 @@ public class AccountFileServiceImpl implements AccountFileService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void fileUpload(FileUploadReq req) {
-        //上传到存储引擎
-        String storeFileObjectKey = storeFile(req);
-        saveFileAndAccountFile(req, storeFileObjectKey);
+        boolean storageEnough = checkAccountStorageUsage(req.getAccountId(), req.getFile().getSize());
+        if (storageEnough) {
+            //上传到存储引擎
+            String storeFileObjectKey = storeFile(req);
+            //保存文件和账号关系
+            saveFileAndAccountFile(req, storeFileObjectKey);
+        } else {
+            throw new BizException(BizCodeEnum.FILE_STORAGE_NOT_ENOUGH);
+        }
+
     }
 
     /**
@@ -234,6 +241,66 @@ public class AccountFileServiceImpl implements AccountFileService {
     }
 
     /**
+     * * 步骤一：检查是否满足：1、文件ID数量是否合法，2、文件是否属于当前用户
+     * * 步骤二：判断文件是否是文件夹，文件夹的话需要递归获取里面子文件ID，然后进行批量删除
+     * * 步骤三：需要更新账号存储空间使用情况
+     * * 步骤四：批量删除账号映射文件，考虑回收站如何设计
+     *
+     * @param req
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delBatch(FileDelBatchReq req) {
+        //步骤一：检查是否满足：1、文件ID数量是否合法，2、文件是否属于当前用户
+        List<AccountFileDO> accountFileDOList = checkFileIdIllegal(req.getFileIds(), req.getAccountId());
+
+        List<AccountFileDO> storageAccountFileDOList = new ArrayList<>();
+
+        //步骤二：判断文件是否是文件夹，文件夹的话需要递归获取里面子文件ID，然后进行批量删除
+        findAllAccountFileDOWithIterative(storageAccountFileDOList, accountFileDOList, false);
+        //拿到全部文件ID列表
+        List<Long> allFileIdList = storageAccountFileDOList.stream().filter(file -> !Objects.equals(file.getParentId(),0L)).map(AccountFileDO::getId).toList();
+
+        //步骤三：需要更新账号存储空间使用情况,可以加个分布式锁，redisson
+        long allFileSize = storageAccountFileDOList.stream()
+                .filter(file -> Objects.equals(file.getIsDir(), FolderFlagEnum.NO.getCode()))
+                .mapToLong(AccountFileDO::getFileSize)
+                .sum();
+        //校验并更新存储空间
+        StorageDO storageDO = storageMapper.selectOne(new LambdaQueryWrapper<StorageDO>()
+                .eq(StorageDO::getAccountId, req.getAccountId()));
+        storageDO.setUsedSize(storageDO.getUsedSize() - allFileSize);
+        storageMapper.updateById(storageDO);
+        //步骤四：批量删除账号映射文件，考虑回收站如何设计
+        accountFileMapper.deleteBatchIds(allFileIdList);
+    }
+
+    @Override
+    public void copyBatch(FileBatchReq req) {
+
+    }
+
+    /**
+     * 判断并更新账号存储空间使用情况
+     *
+     * @param accountId
+     * @param fileSize
+     */
+    private boolean checkAccountStorageUsage(Long accountId, long fileSize) {
+        StorageDO storageDO = storageMapper.selectOne(new LambdaQueryWrapper<StorageDO>()
+                .eq(StorageDO::getAccountId, accountId));
+        Long totalStorageSize = storageDO.getTotalSize();
+        if (storageDO.getUsedSize() + fileSize <= totalStorageSize) {
+            storageDO.setUsedSize(storageDO.getUsedSize() + fileSize);
+            storageMapper.updateById(storageDO);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
+    /**
      * 检查目标文件id是否合法，包括子文件夹
      * 1、目标文件ID不能是文件
      * 2、要操作的文件列表不能包含目标文件ID
@@ -244,7 +311,8 @@ public class AccountFileServiceImpl implements AccountFileService {
         //1、目标文件ID不能是文件
         AccountFileDO parentFileDO = accountFileMapper.selectOne(new LambdaQueryWrapper<AccountFileDO>()
                 .eq(AccountFileDO::getId, req.getTargetParentId())
-                .eq(AccountFileDO::getIsDir, FolderFlagEnum.YES.getCode()));
+                .eq(AccountFileDO::getIsDir, FolderFlagEnum.YES.getCode())
+                .eq(AccountFileDO::getAccountId, req.getAccountId()));
         if (parentFileDO == null) {
             log.error("文件批量移动不合法，目标id:{}", req.getTargetParentId());
             throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
@@ -263,7 +331,7 @@ public class AccountFileServiceImpl implements AccountFileService {
         //定义一个容器存储全部文件夹，包括子文件夹
         List<AccountFileDO> allAccountFileDOList = new ArrayList<>();
 
-        findAllAccountFileDOWithRecur(allAccountFileDOList,prepareAccountFileDOList,false);
+        findAllAccountFileDOWithRecur(allAccountFileDOList, prepareAccountFileDOList, false);
 
         //判断全部文件夹是否存在目标文件id
         if (allAccountFileDOList.stream().anyMatch(accountFileDO -> Objects.equals(accountFileDO.getId(), req.getTargetParentId()))) {
@@ -273,14 +341,59 @@ public class AccountFileServiceImpl implements AccountFileService {
     }
 
     /**
+     * 采用迭代方式批量查询所有子文件（和子文件夹）
+     *
+     * @param allAccountFileDOList     用于存储所有遍历到的文件/文件夹
+     * @param prepareAccountFileDOList 初始操作的文件列表（可能包含文件和文件夹）
+     * @param onlyFolder               如果为true，则只存储文件夹，否则全部存储
+     */
+    private void findAllAccountFileDOWithIterative(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder) {
+        if (prepareAccountFileDOList == null || prepareAccountFileDOList.isEmpty()) {
+            return;
+        }
+        // 使用队列保存需要查询子节点的文件夹ID
+        Queue<Long> queue = new LinkedList<>();
+        // 将初始列表中的记录加入结果集，并将文件夹的ID加入队列（因为只有文件夹才可能有子文件）
+        for (AccountFileDO file : prepareAccountFileDOList) {
+            if (!onlyFolder || FolderFlagEnum.YES.getCode().equals(file.getIsDir())) {
+                allAccountFileDOList.add(file);
+            }
+            if (FolderFlagEnum.YES.getCode().equals(file.getIsDir())) {
+                queue.offer(file.getId());
+            }
+        }
+
+        // 当队列非空时，批量查询当前层的所有子节点
+        while (!queue.isEmpty()) {
+            List<Long> parentIds = new ArrayList<>();
+            while (!queue.isEmpty()) {
+                parentIds.add(queue.poll());
+            }
+            // 批量查询所有 parentId 在当前层的子节点，减少数据库调用次数
+            List<AccountFileDO> children = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                    .in(AccountFileDO::getParentId, parentIds));
+            for (AccountFileDO child : children) {
+                if (!onlyFolder || FolderFlagEnum.YES.getCode().equals(child.getIsDir())) {
+                    allAccountFileDOList.add(child);
+                }
+                // 如果子节点是文件夹，则加入队列，用于继续查询它的子节点
+                if (FolderFlagEnum.YES.getCode().equals(child.getIsDir())) {
+                    queue.offer(child.getId());
+                }
+            }
+        }
+    }
+
+    /**
      * 目标文件id是否在操作的文件目录下
+     *
      * @param allAccountFileDOList
      * @param prepareAccountFileDOList
      * @param onlyFolder
      */
     private void findAllAccountFileDOWithRecur(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder) {
-        for (AccountFileDO prepare : prepareAccountFileDOList){
-            if (Objects.equals(prepare.getIsDir(),FolderFlagEnum.YES.getCode())){
+        for (AccountFileDO prepare : prepareAccountFileDOList) {
+            if (Objects.equals(prepare.getIsDir(), FolderFlagEnum.YES.getCode())) {
                 List<AccountFileDO> children = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
                         .eq(AccountFileDO::getParentId, prepare.getId()));
 
@@ -288,7 +401,7 @@ public class AccountFileServiceImpl implements AccountFileService {
             }
 
             //如果onlyFolder是true，只存储文件夹到allAccountFileDOList，否则都存储到allAccountFileDOList
-            if (!onlyFolder || Objects.equals(prepare.getIsDir(), FolderFlagEnum.YES.getCode())){
+            if (!onlyFolder || Objects.equals(prepare.getIsDir(), FolderFlagEnum.YES.getCode())) {
                 allAccountFileDOList.add(prepare);
             }
         }

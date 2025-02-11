@@ -15,7 +15,7 @@ public class FolderUpdateReq {
     /**
      * 账号id
      */
-    @Schema(description = "账号ID", example = "123456789", required = true)
+    @Schema(description = "账号ID", example = "123456789", required = false)
     private Long accountId;
 
     /**

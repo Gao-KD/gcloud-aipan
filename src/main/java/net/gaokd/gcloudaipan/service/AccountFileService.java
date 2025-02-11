@@ -1,9 +1,6 @@
 package net.gaokd.gcloudaipan.service;
 
-import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
-import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
-import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
-import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
+import net.gaokd.gcloudaipan.controller.req.*;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 
@@ -36,4 +33,10 @@ public interface AccountFileService {
 
     //批量移动文件
     void moveBatch(FileBatchReq req);
+
+    //批量删除文件
+    void delBatch(FileDelBatchReq req);
+
+    //批量复制文件
+    void copyBatch(FileBatchReq req);
 }

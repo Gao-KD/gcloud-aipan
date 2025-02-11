@@ -3,10 +3,7 @@ package net.gaokd.gcloudaipan.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
-import net.gaokd.gcloudaipan.controller.req.FileBatchReq;
-import net.gaokd.gcloudaipan.controller.req.FileUploadReq;
-import net.gaokd.gcloudaipan.controller.req.FolderCreateReq;
-import net.gaokd.gcloudaipan.controller.req.FolderUpdateReq;
+import net.gaokd.gcloudaipan.controller.req.*;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.interceptor.LoginInterceptor;
@@ -96,6 +93,25 @@ public class AccountFileController {
         Long accountId = LoginInterceptor.threadLocal.get().getId();
         req.setAccountId(accountId);
         accountFileService.moveBatch(req);
+        return JsonData.buildSuccess();
+    }
+
+    /**
+     * 文件批量删除
+     */
+    @PostMapping("del_batch")
+    @Operation(summary = "批量删除", description = "批量删除文件")
+    public JsonData delBatch(@RequestBody FileDelBatchReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        accountFileService.delBatch(req);
+        return JsonData.buildSuccess();
+    }
+
+    @PostMapping("/copy_batch")
+    public JsonData copyBatch(@RequestBody FileBatchReq req){
+        req.setAccountId(LoginInterceptor.threadLocal.get().getId());
+        accountFileService.copyBatch(req);
         return JsonData.buildSuccess();
     }
 

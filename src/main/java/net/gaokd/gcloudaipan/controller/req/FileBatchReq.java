@@ -14,12 +14,12 @@ import java.util.List;
 @Data
 public class FileBatchReq {
 
-    @Schema(description = "移动文件的ID列表", required = true)
+    @Schema(description = "操作文件的ID列表", required = true)
     private List<Long> fileIds;
 
     @Schema(description = "目标父文件ID", required = true)
     private Long targetParentId;
 
-    @Schema(description = "账号ID", required = true)
+    @Schema(description = "账号ID", required = false)
     private Long accountId;
 }
