@@ -1,6 +1,7 @@
 package net.gaokd.gcloudaipan.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import jakarta.annotation.Resource;
@@ -259,7 +260,7 @@ public class AccountFileServiceImpl implements AccountFileService {
         //步骤二：判断文件是否是文件夹，文件夹的话需要递归获取里面子文件ID，然后进行批量删除
         findAllAccountFileDOWithIterative(storageAccountFileDOList, accountFileDOList, false);
         //拿到全部文件ID列表
-        List<Long> allFileIdList = storageAccountFileDOList.stream().filter(file -> !Objects.equals(file.getParentId(),0L)).map(AccountFileDO::getId).toList();
+        List<Long> allFileIdList = storageAccountFileDOList.stream().filter(file -> !Objects.equals(file.getParentId(), 0L)).map(AccountFileDO::getId).toList();
 
         //步骤三：需要更新账号存储空间使用情况,可以加个分布式锁，redisson
         long allFileSize = storageAccountFileDOList.stream()
@@ -275,9 +276,93 @@ public class AccountFileServiceImpl implements AccountFileService {
         accountFileMapper.deleteBatchIds(allFileIdList);
     }
 
+    /**
+     * * 检查被转移的文件ID是否合法
+     * * 检查目标文件夹ID是否合法
+     * * 执行拷贝，递归查找【差异点，ID是全新的】
+     * * 计算存储空间大小，检查是否足够【差异点，空间需要检查】
+     * * 存储相关记录
+     *
+     * @param req
+     */
     @Override
     public void copyBatch(FileBatchReq req) {
+        //步骤一：检查被转移的文件ID是否合法
+        List<AccountFileDO> accountFileDOList = checkFileIdIllegal(req.getFileIds(), req.getAccountId());
+        //步骤二：检查目标文件夹ID是否合法
+        checkTargetParentIdLegal(req);
+        //步骤三：执行拷贝，递归查找【差异点，ID是全新的】
+        List<AccountFileDO> newAccountFileDOList = findBatchCopyFileWithRecur(accountFileDOList, req.getTargetParentId());
 
+        long allFileSize = accountFileDOList.stream().filter(file -> Objects.equals(file.getIsDir(), FolderFlagEnum.NO.getCode()))
+                .mapToLong(AccountFileDO::getFileSize)
+                .sum();
+        //步骤四：计算存储空间大小，检查是否足够【差异点，空间需要检查】
+        if (!checkAccountStorageUsage(req.getAccountId(), allFileSize)) {
+            throw new BizException(BizCodeEnum.FILE_STORAGE_NOT_ENOUGH);
+        }
+        ;
+        //存储相关记录
+        accountFileMapper.insertFileBatch(newAccountFileDOList);
+
+    }
+
+    /**
+     * 执行拷贝，递归查找【差异点，ID是全新的】
+     *
+     * @param accountFileDOList
+     * @param targetParentId
+     * @return
+     */
+    private List<AccountFileDO> findBatchCopyFileWithRecur(List<AccountFileDO> accountFileDOList, Long targetParentId) {
+        List<AccountFileDO> newAccountFileDOList = new ArrayList<>();
+        accountFileDOList.forEach(accountFileDO -> doCopyChildRecord(newAccountFileDOList, accountFileDO, targetParentId));
+        return newAccountFileDOList;
+    }
+
+    /**
+     * 递归拷贝
+     *
+     * @param newAccountFileDOList
+     * @param accountFileDO
+     * @param targetParentId
+     */
+    private void doCopyChildRecord(List<AccountFileDO> newAccountFileDOList, AccountFileDO accountFileDO, Long targetParentId) {
+        //保存旧的ID，方便查找子文件夹
+        Long oldAccountFileId = accountFileDO.getId();
+        //创建新纪录
+        accountFileDO.setId(IdUtil.getSnowflakeNextId());
+        accountFileDO.setParentId(targetParentId);
+        accountFileDO.setGmtModified(null);
+        accountFileDO.setGmtCreate(null);
+
+
+        //处理重复文件夹
+        processFileNameDuplicate(accountFileDO);
+        //纳入容器存储
+        newAccountFileDOList.add(accountFileDO);
+
+        if (Objects.equals(accountFileDO.getIsDir(), FolderFlagEnum.YES.getCode())) {
+            //继续获取子文件夹列表
+            List<AccountFileDO> childAccountFileDOList = findChildAccountFile(accountFileDO.getAccountId(), oldAccountFileId);
+            if (CollectionUtil.isEmpty(childAccountFileDOList)) {
+                return;
+            }
+            //递归处理
+            childAccountFileDOList.forEach(childAccountFileDO -> doCopyChildRecord(newAccountFileDOList, childAccountFileDO, accountFileDO.getId()));
+        }
+    }
+
+    /**
+     * 查找文件记录，只查询下一级
+     * @param accountId
+     * @param oldAccountFileId
+     * @return
+     */
+    private List<AccountFileDO> findChildAccountFile(Long accountId, Long oldAccountFileId) {
+        return accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
+                .eq(AccountFileDO::getParentId, oldAccountFileId)
+                .eq(AccountFileDO::getAccountId, accountId));
     }
 
     /**

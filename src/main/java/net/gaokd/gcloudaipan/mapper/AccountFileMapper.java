@@ -2,6 +2,9 @@ package net.gaokd.gcloudaipan.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import net.gaokd.gcloudaipan.model.AccountFileDO;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * <p>
@@ -13,4 +16,6 @@ import net.gaokd.gcloudaipan.model.AccountFileDO;
  */
 public interface AccountFileMapper extends BaseMapper<AccountFileDO> {
 
+    //批量插入
+    void insertFileBatch(@Param("newAccountFileDOList") List<AccountFileDO> newAccountFileDOList);
 }
