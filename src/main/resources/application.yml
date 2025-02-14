@@ -9,13 +9,13 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://14.103.227.76:3306/dcloud_aipan?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: Gkd03073436
+    password: GgAaOoKkDd03073436
   #redis配置
   data:
     redis:
       host: 14.103.227.76
       port: 6379
-      password: $RFV6tfc
+      password: Gkd$RFV6tfc!QAZ2wsx
 
 # mybatis-plus配置
 mybatis-plus:
@@ -34,6 +34,6 @@ mybatis-plus:
 minio:
   endpoint: http://14.103.227.76:9000
   access-key: minio_gaokd
-  access-secret: minio_gaokd123
+  access-secret: minio_GgAaOoKkDd03073436
   bucket-name: ai-pan
   avatar-bucket-name: avatar

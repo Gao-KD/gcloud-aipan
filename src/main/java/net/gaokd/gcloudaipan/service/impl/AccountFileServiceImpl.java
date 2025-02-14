@@ -199,7 +199,7 @@ public class AccountFileServiceImpl implements AccountFileService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void fileUpload(FileUploadReq req) {
-        boolean storageEnough = checkAccountStorageUsage(req.getAccountId(), req.getFile().getSize());
+        boolean storageEnough = checkAndUpdateCapacity(req.getAccountId(), req.getFile().getSize());
         if (storageEnough) {
             //上传到存储引擎
             String storeFileObjectKey = storeFile(req);
@@ -294,17 +294,53 @@ public class AccountFileServiceImpl implements AccountFileService {
         //步骤三：执行拷贝，递归查找【差异点，ID是全新的】
         List<AccountFileDO> newAccountFileDOList = findBatchCopyFileWithRecur(accountFileDOList, req.getTargetParentId());
 
-        long allFileSize = accountFileDOList.stream().filter(file -> Objects.equals(file.getIsDir(), FolderFlagEnum.NO.getCode()))
+        long allFileSize = newAccountFileDOList.stream()
+                .filter(file -> Objects.equals(file.getIsDir(), FolderFlagEnum.NO.getCode()))
                 .mapToLong(AccountFileDO::getFileSize)
                 .sum();
         //步骤四：计算存储空间大小，检查是否足够【差异点，空间需要检查】
-        if (!checkAccountStorageUsage(req.getAccountId(), allFileSize)) {
+        if (!checkAndUpdateCapacity(req.getAccountId(), allFileSize)) {
             throw new BizException(BizCodeEnum.FILE_STORAGE_NOT_ENOUGH);
         }
         ;
         //存储相关记录
         accountFileMapper.insertFileBatch(newAccountFileDOList);
 
+    }
+
+    /**
+     * 文件秒传
+     * 1、检查文件是否存在
+     * 2、检查空间是否足够
+     * 3、建立关系
+     *
+     * @param req
+     * @return
+     */
+    @Override
+    public Boolean secondUpload(FileSecondUpLoadReq req) {
+        //检查文件是否存在
+        FileDO fileDO = fileMapper.selectOne(new LambdaQueryWrapper<FileDO>()
+                .eq(FileDO::getIdentifier, req.getIdentifier()));
+        //检查空间是否足够
+        if (fileDO != null && checkAndUpdateCapacity(req.getAccountId(), fileDO.getFileSize())) {
+            //处理文件秒传
+            AccountFileDTO accountFileDTO = AccountFileDTO.builder()
+                    .accountId(req.getAccountId())
+                    .fileId(fileDO.getId())
+                    .parentId(req.getParentId())
+                    .fileSuffix(fileDO.getFileSuffix())
+                    .fileName(req.getFileName())
+                    .fileType(FileTypeEnum.fromExtension(fileDO.getFileSuffix()).name())
+                    .fileSize(fileDO.getFileSize())
+                    .del(false)
+                    .isDir(FolderFlagEnum.NO.getCode())
+                    .build();
+            //保存关联文件关系，里面有做相关检查
+            saveAccountFile(accountFileDTO);
+            return true;
+        }
+        return null;
     }
 
     /**
@@ -355,6 +391,7 @@ public class AccountFileServiceImpl implements AccountFileService {
 
     /**
      * 查找文件记录，只查询下一级
+     *
      * @param accountId
      * @param oldAccountFileId
      * @return
@@ -371,7 +408,7 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param accountId
      * @param fileSize
      */
-    private boolean checkAccountStorageUsage(Long accountId, long fileSize) {
+    private boolean checkAndUpdateCapacity(Long accountId, long fileSize) {
         StorageDO storageDO = storageMapper.selectOne(new LambdaQueryWrapper<StorageDO>()
                 .eq(StorageDO::getAccountId, accountId));
         Long totalStorageSize = storageDO.getTotalSize();
@@ -621,23 +658,38 @@ public class AccountFileServiceImpl implements AccountFileService {
      * 处理文件是否重复
      * 文件夹重复和文件名重复处理规则不一样
      *
-     * @param accountFileDO
+     * @param accountFileDO 文件信息对象
      */
     private void processFileNameDuplicate(AccountFileDO accountFileDO) {
+        if (accountFileDO == null || accountFileDO.getFileName() == null) {
+            return;
+        }
+
         Long count = accountFileMapper.selectCount(new LambdaQueryWrapper<AccountFileDO>()
                 .eq(AccountFileDO::getAccountId, accountFileDO.getAccountId())
                 .eq(AccountFileDO::getParentId, accountFileDO.getParentId())
                 .eq(AccountFileDO::getFileName, accountFileDO.getFileName())
                 .eq(AccountFileDO::getIsDir, accountFileDO.getIsDir()));
+
         if (count > 0) {
-            //处理重复文件夹
-            if (accountFileDO.getIsDir().equals(FolderFlagEnum.YES.getCode())) {
-                accountFileDO.setFileName(accountFileDO.getFileName() + "_" + System.currentTimeMillis());
+            String originalFileName = accountFileDO.getFileName();
+            String timeStamp = "_" + System.currentTimeMillis();
+            // 如果是文件夹，则直接拼接时间戳
+            if (FolderFlagEnum.YES.getCode().equals(accountFileDO.getIsDir())) {
+                accountFileDO.setFileName(originalFileName + timeStamp);
             } else {
-                //处理重复文件名，提取文件扩展名
-                String[] split = accountFileDO.getFileName().split("\\.");
-                accountFileDO.setFileName(split[0] + "_" + System.currentTimeMillis() + split[1]);
+                // 对文件名进行处理，保留扩展名（如果存在）
+                int dotIndex = originalFileName.lastIndexOf('.');
+                if (dotIndex == -1) {
+                    // 文件没有扩展名
+                    accountFileDO.setFileName(originalFileName + timeStamp);
+                } else {
+                    String baseName = originalFileName.substring(0, dotIndex);
+                    String extension = originalFileName.substring(dotIndex); // 包含点
+                    accountFileDO.setFileName(baseName + timeStamp + extension);
+                }
             }
         }
     }
+
 }

@@ -12,7 +12,7 @@ import lombok.experimental.Accessors;
  */
 @Data
 @Accessors(chain = true)
-public class FileSecondUoLoadReq {
+public class FileSecondUpLoadReq {
 
     @Schema(description = "文件名", required = true)
     private String fileName;
@@ -25,7 +25,4 @@ public class FileSecondUoLoadReq {
 
     @Schema(description = "父目录ID", required = true)
     private Long parentId;
-
-    @Schema(description = "文件大小", required = true)
-    private Long fileSize;
 }

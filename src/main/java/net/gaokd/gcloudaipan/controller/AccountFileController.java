@@ -49,6 +49,7 @@ public class AccountFileController {
         Long folderId = accountFileService.createFolder(req);
         return JsonData.buildSuccess(folderId);
     }
+
     /**
      * 文件重命名
      */
@@ -77,7 +78,7 @@ public class AccountFileController {
      */
     @PostMapping("upload")
     @Operation(summary = "小文件上传", description = "上传一个小文件")
-    public JsonData upload(FileUploadReq req){
+    public JsonData upload(FileUploadReq req) {
         Long accountId = LoginInterceptor.threadLocal.get().getId();
         req.setAccountId(accountId);
         accountFileService.fileUpload(req);
@@ -108,11 +109,30 @@ public class AccountFileController {
         return JsonData.buildSuccess();
     }
 
+
+    /**
+     * 文件批量复制
+     *
+     * @param req
+     * @return
+     */
     @PostMapping("/copy_batch")
-    public JsonData copyBatch(@RequestBody FileBatchReq req){
+    @Operation(summary = "批量复制", description = "批量复制文件")
+    public JsonData copyBatch(@RequestBody FileBatchReq req) {
         req.setAccountId(LoginInterceptor.threadLocal.get().getId());
         accountFileService.copyBatch(req);
         return JsonData.buildSuccess();
     }
 
+    /**
+     * 文件秒传接口
+     */
+    @PostMapping("second_upload")
+    @Operation(summary = "文件秒传", description = "文件秒传接口")
+    public JsonData secondUpload(@RequestBody FileSecondUpLoadReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        Boolean flag = accountFileService.secondUpload(req);
+        return JsonData.buildSuccess(flag);
+    }
 }

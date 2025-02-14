@@ -1,9 +1,11 @@
 package net.gaokd.gcloudaipan.exception;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import net.gaokd.gcloudaipan.enums.BizCodeEnum;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class BizException extends RuntimeException {
 
     private int code;

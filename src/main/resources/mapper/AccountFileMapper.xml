@@ -4,27 +4,28 @@
 
     <!-- 通用查询映射结果 -->
     <resultMap id="BaseResultMap" type="net.gaokd.gcloudaipan.model.AccountFileDO">
-        <id column="id" property="id" />
-        <result column="account_id" property="accountId" />
-        <result column="is_dir" property="isDir" />
-        <result column="parent_id" property="parentId" />
-        <result column="file_id" property="fileId" />
-        <result column="file_name" property="fileName" />
-        <result column="file_type" property="fileType" />
-        <result column="file_suffix" property="fileSuffix" />
-        <result column="file_size" property="fileSize" />
-        <result column="del" property="del" />
-        <result column="del_time" property="delTime" />
-        <result column="gmt_modified" property="gmtModified" />
-        <result column="gmt_create" property="gmtCreate" />
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="is_dir" property="isDir"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_suffix" property="fileSuffix"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="del" property="del"/>
+        <result column="del_time" property="delTime"/>
+        <result column="gmt_modified" property="gmtModified"/>
+        <result column="gmt_create" property="gmtCreate"/>
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, account_id, is_dir, parent_id, file_id, file_name, file_type, file_suffix, file_size, del, del_time, gmt_modified, gmt_create
+        id
+        , account_id, is_dir, parent_id, file_id, file_name, file_type, file_suffix, file_size, del, del_time, gmt_modified, gmt_create
     </sql>
 
-    <insert id="insertFileBatch" parameterMap="java.util.List">
+    <insert id="insertFileBatch" parameterType="java.util.List">
         insert into account_file (id,account_id, is_dir, parent_id, file_id, file_name, file_type, file_suffix,
         file_size, del, del_time)
         values

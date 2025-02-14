@@ -39,4 +39,7 @@ public interface AccountFileService {
 
     //批量复制文件
     void copyBatch(FileBatchReq req);
+
+    //文件秒传
+    Boolean secondUpload(FileSecondUpLoadReq req);
 }
