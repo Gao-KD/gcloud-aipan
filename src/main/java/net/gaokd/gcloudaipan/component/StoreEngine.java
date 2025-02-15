@@ -1,11 +1,14 @@
 package net.gaokd.gcloudaipan.component;
 
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.HttpMethod;
+import com.amazonaws.services.s3.model.*;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URL;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -113,4 +116,44 @@ public interface StoreEngine {
      * @param response HTTP响应对象，用于输出下载的对象
      */
     void download2Response(String bucketName, String objectKey, HttpServletResponse response);
+
+    /**
+     * 查询分片数据
+     * @param bucketName 存储桶名称
+     * @param objectKey 对象名称
+     * @param uploadId 分片上传ID
+     * @return 分片列表对象
+     */
+    PartListing listMultipart(String bucketName, String objectKey, String uploadId);
+
+    /**
+     * 1-初始化分片上传任务,获取uploadId,如果初始化时有 uploadId，说明是断点续传，不能重新生成 uploadId
+     * @param bucketName 存储桶名称
+     * @param objectKey 对象名称
+     * @param metadata 对象元数据
+     * @return 初始化分片上传结果对象，包含uploadId等信息
+     */
+    InitiateMultipartUploadResult initMultipartUploadTask(String bucketName, String objectKey, ObjectMetadata metadata);
+
+
+    /**
+     * 2-生成分片上传地址，返回给前端
+     * @param bucketName 存储桶名称
+     * @param objectKey 对象名称
+     * @param httpMethod HTTP方法，如GET、PUT等
+     * @param expiration 签名过期时间
+     * @param params 签名中包含的参数
+     * @return 生成的预签名URL
+     */
+    URL genePreSignedUrl(String bucketName, String objectKey, HttpMethod httpMethod, Date expiration, Map<String,Object> params);
+
+    /**
+     * 3-合并分片
+     * @param bucketName 存储桶名称
+     * @param objectKey 对象名称
+     * @param uploadId 分片上传ID
+     * @param partETags 分片ETag列表，用于验证分片的完整性
+     * @return 完成分片上传结果对象
+     */
+    CompleteMultipartUploadResult mergeChunks(String bucketName, String objectKey, String uploadId, List<PartETag> partETags);
 }

@@ -42,4 +42,5 @@ public interface AccountFileService {
 
     //文件秒传
     Boolean secondUpload(FileSecondUpLoadReq req);
+
 }

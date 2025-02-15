@@ -1,11 +1,14 @@
 package net.gaokd.gcloudaipan.component;
 
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.*;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URL;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -68,5 +71,25 @@ public class LocalFileStoreEngine implements StoreEngine{
     @Override
     public void download2Response(String bucketName, String objectKey, HttpServletResponse response) {
 
+    }
+
+    @Override
+    public PartListing listMultipart(String bucketName, String objectKey, String uploadId) {
+        return null;
+    }
+
+    @Override
+    public InitiateMultipartUploadResult initMultipartUploadTask(String bucketName, String objectKey, ObjectMetadata metadata) {
+        return null;
+    }
+
+    @Override
+    public URL genePreSignedUrl(String bucketName, String objectKey, HttpMethod httpMethod, Date expiration, Map<String, Object> params) {
+        return null;
+    }
+
+    @Override
+    public CompleteMultipartUploadResult mergeChunks(String bucketName, String objectKey, String uploadId, List<PartETag> partETags) {
+        return null;
     }
 }

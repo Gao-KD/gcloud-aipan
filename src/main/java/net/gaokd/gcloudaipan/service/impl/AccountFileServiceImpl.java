@@ -340,7 +340,7 @@ public class AccountFileServiceImpl implements AccountFileService {
             saveAccountFile(accountFileDTO);
             return true;
         }
-        return null;
+        return false;
     }
 
     /**
