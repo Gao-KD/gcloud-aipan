@@ -43,4 +43,9 @@ public interface AccountFileService {
     //文件秒传
     Boolean secondUpload(FileSecondUpLoadReq req);
 
+    //校验并更新存储空间
+    boolean checkAndUpdateCapacity(Long accountId,Long fileSize);
+
+    //保存文件关系和账号文件关系到数据库
+    void saveFileAndAccountFile(FileUploadReq req, String storeFileObjectKey);
 }

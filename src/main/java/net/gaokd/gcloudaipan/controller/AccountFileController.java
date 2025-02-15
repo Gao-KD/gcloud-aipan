@@ -5,13 +5,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import net.gaokd.gcloudaipan.controller.req.*;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
+import net.gaokd.gcloudaipan.dto.FileChunkDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
 import net.gaokd.gcloudaipan.interceptor.LoginInterceptor;
 import net.gaokd.gcloudaipan.service.AccountFileService;
+import net.gaokd.gcloudaipan.service.FileChunkService;
 import net.gaokd.gcloudaipan.util.JsonData;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @ClassName: AccountFileController
@@ -26,6 +29,9 @@ public class AccountFileController {
 
     @Resource
     private AccountFileService accountFileService;
+
+    @Resource
+    private FileChunkService fileChunkService;
 
     /**
      * 查询文件列表接口
@@ -134,5 +140,51 @@ public class AccountFileController {
         req.setAccountId(accountId);
         Boolean flag = accountFileService.secondUpload(req);
         return JsonData.buildSuccess(flag);
+    }
+
+    /**
+     * 1-创建文件分片任务
+     */
+    @PostMapping("init_file_chunk_task")
+    @Operation(summary = "创建文件分片任务", description = "创建文件分片任务")
+    public JsonData initFileChunkTask(@RequestBody FileChunkInitReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        FileChunkDTO fileChunkDTO = fileChunkService.initFileChunkTask(req);
+        return JsonData.buildSuccess(fileChunkDTO);
+    }
+
+    /**
+     * 2-获取分片上传地址，返回minio临时签名地址
+     */
+    @GetMapping("/get_file_chunk_upload_url/{identifier}/{partNumber}")
+    @Operation(summary = "获取分片上传地址", description = "获取分片上传地址")
+    public JsonData getFileChunkUploadUrl(@PathVariable("identifier") String identifier, @PathVariable("partNumber") Integer partNumber) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        String uploadUrl = fileChunkService.genPreSignUploadUrl(accountId, identifier, partNumber);
+        return JsonData.buildSuccess(uploadUrl);
+    }
+
+    /**
+     * 3-合并分片
+     */
+    @PostMapping("merge_file_chunk")
+    @Operation(summary = "合并分片", description = "合并分片")
+    public JsonData mergeFileChunk(@RequestBody FileChunkMergeReq req) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        req.setAccountId(accountId);
+        fileChunkService.mergeFileChunk(req);
+        return JsonData.buildSuccess();
+    }
+
+    /**
+     * 查看分片上传进度
+     */
+    @GetMapping("/get_file_chunk_upload_progress/{identifier}")
+    @Operation(summary = "查看分片上传进度", description = "查看分片上传进度")
+    public JsonData getFileChunkUploadProgress(@PathVariable("identifier") String identifier) {
+        Long accountId = LoginInterceptor.threadLocal.get().getId();
+        FileChunkDTO dto = fileChunkService.getFileChunkUploadProgress(accountId, identifier);
+        return JsonData.buildSuccess(dto);
     }
 }

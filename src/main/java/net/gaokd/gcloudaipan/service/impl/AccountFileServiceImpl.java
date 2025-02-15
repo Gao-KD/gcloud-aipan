@@ -408,7 +408,7 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param accountId
      * @param fileSize
      */
-    private boolean checkAndUpdateCapacity(Long accountId, long fileSize) {
+    public boolean checkAndUpdateCapacity(Long accountId, Long fileSize) {
         StorageDO storageDO = storageMapper.selectOne(new LambdaQueryWrapper<StorageDO>()
                 .eq(StorageDO::getAccountId, accountId));
         Long totalStorageSize = storageDO.getTotalSize();
@@ -581,7 +581,7 @@ public class AccountFileServiceImpl implements AccountFileService {
         FileDO fileDO = new FileDO();
         fileDO.setAccountId(req.getAccountId());
         fileDO.setFileName(req.getFileName());
-        fileDO.setFileSuffix(CommonUtil.getFileSuffix(req.getFile().getOriginalFilename()));
+        fileDO.setFileSuffix(CommonUtil.getFileSuffix(req.getFileName()));
         fileDO.setFileSize(req.getFile() != null ? req.getFile().getSize() : req.getFileSize());
         fileDO.setIdentifier(req.getIdentifier());
         fileDO.setObjectKey(storeFileObjectKey);
