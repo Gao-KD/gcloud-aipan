@@ -78,7 +78,7 @@ public class FileChunkServiceImpl implements FileChunkService {
         //根据文件名推断内容类型
         String contentType = MediaTypeFactory.getMediaType(req.getFileName()).orElse(MediaType.APPLICATION_OCTET_STREAM).toString();
 
-        String objectKey = CommonUtil.getFileSuffix(req.getFileName());
+        String objectKey = CommonUtil.getFilePath(req.getFileName());
         ObjectMetadata objectMetadata = new ObjectMetadata();
         objectMetadata.setContentType(contentType);
         //初始化分片上传,获取上传ID
@@ -126,8 +126,6 @@ public class FileChunkServiceImpl implements FileChunkService {
         Date expiration = DateUtil.offsetMillisecond(new Date(), (int) PRE_SIGN_URL_EXPIRE);
         URL preSignedUrl = fileStoreEngine.genePreSignedUrl(minioConfig.getBucketName(), fileChunkDO.getObjectKey(), HttpMethod.PUT, expiration, param);
         return preSignedUrl.toString();
-
-
     }
 
     /**
@@ -155,10 +153,9 @@ public class FileChunkServiceImpl implements FileChunkService {
         //查看分片数量
         PartListing partListing = fileStoreEngine.listMultipart(minioConfig.getBucketName(), task.getObjectKey(), task.getUploadId());
         List<PartSummary> parts = partListing.getParts();
-        if (parts.size() != task.getChunkSize()) {
+        if (parts.size() != task.getChunkNum()) {
             throw new BizException(BizCodeEnum.FILE_CHUNK_NOT_ENOUGH);
-        }
-        ;
+        };
 
         long realFileTotalSize = parts.stream().mapToLong(PartSummary::getSize).sum();
         //检查存储空间和更新
@@ -171,7 +168,7 @@ public class FileChunkServiceImpl implements FileChunkService {
         //合并分片
         List<PartETag> partETagList = parts.stream().map(partSummary -> new PartETag(partSummary.getPartNumber(), partSummary.getETag())).toList();
         CompleteMultipartUploadResult result = fileStoreEngine.mergeChunks(minioConfig.getBucketName(), task.getObjectKey(), task.getUploadId(), partETagList);
-        //【判断是否合并成功
+        //判断是否合并成功
         if (result.getETag() != null) {
             FileUploadReq fileUploadReq = new FileUploadReq();
             fileUploadReq.setAccountId(req.getAccountId())

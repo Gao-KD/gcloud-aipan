@@ -3,6 +3,8 @@ package net.gaokd.gcloudaipan.mapper;
 import net.gaokd.gcloudaipan.model.ShareFileDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
+import java.util.List;
+
 /**
  * <p>
  * 文件分享表 Mapper 接口
@@ -13,4 +15,6 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface ShareFileMapper extends BaseMapper<ShareFileDO> {
 
+    //批量保存
+    void insertBatch(List<ShareFileDO> shareFileDOS);
 }

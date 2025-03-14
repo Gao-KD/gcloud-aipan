@@ -9,8 +9,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * <p>
@@ -22,6 +21,9 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @TableName("share_file")
 @Schema(name = "ShareFileDO", description = "文件分享表")
 public class ShareFileDO implements Serializable {

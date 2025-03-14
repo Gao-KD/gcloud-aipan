@@ -3,6 +3,7 @@ package net.gaokd.gcloudaipan.service;
 import net.gaokd.gcloudaipan.controller.req.*;
 import net.gaokd.gcloudaipan.dto.AccountFileDTO;
 import net.gaokd.gcloudaipan.dto.FolderTreeNodeDTO;
+import net.gaokd.gcloudaipan.model.AccountFileDO;
 
 import java.util.List;
 
@@ -48,4 +49,7 @@ public interface AccountFileService {
 
     //保存文件关系和账号文件关系到数据库
     void saveFileAndAccountFile(FileUploadReq req, String storeFileObjectKey);
+
+    //校验文件列表id是否合法
+    List<AccountFileDO> checkFileIdIllegal(List<Long> fileIds, Long accountId);
 }

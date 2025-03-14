@@ -228,17 +228,20 @@ public class AccountFileServiceImpl implements AccountFileService {
         //检查目标文件ID是否合法，包括子文件夹
         checkTargetParentIdLegal(req);
 
+        //批量转移文件到目标文件夹
+        accountFileDOList.forEach(accountFileDO -> accountFileDO.setParentId(req.getTargetParentId()));
+
         //批量移动，处理文件重命名
         accountFileDOList.forEach(this::processFileNameDuplicate);
 
-        //批量更新
-        int updateCount = accountFileMapper.update(new UpdateWrapper<AccountFileDO>()
-                .in("id", req.getFileIds())
-                .set("parent_id", req.getTargetParentId()));
-        if (updateCount != req.getFileIds().size()) {
-            log.error("文件移动失败");
-            throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+        //更新文件或者文件夹的parent_id为目标文件夹的ID
+        for (AccountFileDO accountFileDO : accountFileDOList) {
+            if (accountFileMapper.updateById(accountFileDO) < 0) {
+                log.error("文件移动失败");
+                throw new BizException(BizCodeEnum.FILE_UPDATE_BATCH_ERROR);
+            }
         }
+
     }
 
     /**
@@ -536,7 +539,8 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param fileIds
      * @param accountId
      */
-    private List<AccountFileDO> checkFileIdIllegal(List<Long> fileIds, Long accountId) {
+    @Override
+    public List<AccountFileDO> checkFileIdIllegal(List<Long> fileIds, Long accountId) {
         //更加严谨的操作是fileIds要去重
         List<AccountFileDO> accountFileDOList = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()
                 .in(AccountFileDO::getId, fileIds)

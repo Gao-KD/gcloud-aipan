@@ -21,4 +21,7 @@ public class AccountConfig {
     //根文件夹id
     public static final Long ROOT_PARENT_ID = 0L;
 
+    //网盘前端地址
+    public static final String PAN_FRONT_DOMAIN = "http://14.103.227.76:9001/share/";
+
 }

@@ -2,6 +2,7 @@ package net.gaokd.gcloudaipan.controller.req;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 /**
  * @ClassName: FileChunkMergeReq
@@ -10,6 +11,7 @@ import lombok.Data;
  * @Version: V1.0
  */
 @Data
+@Accessors(chain = true)
 public class FileChunkMergeReq {
 
     @Schema(description = "账户ID", required = false)

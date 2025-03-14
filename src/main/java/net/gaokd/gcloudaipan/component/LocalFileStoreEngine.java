@@ -1,8 +1,8 @@
 package net.gaokd.gcloudaipan.component;
 
+import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.model.*;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpMethod;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URL;

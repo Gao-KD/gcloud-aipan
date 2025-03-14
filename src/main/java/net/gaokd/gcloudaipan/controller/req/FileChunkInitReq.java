@@ -14,7 +14,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class FileChunkInitReq {
 
-    @Schema(description = "账户ID", required = true)
+    @Schema(description = "账户ID", required = false)
     private Long accountId;
 
     @Schema(description = "文件名", required = true)
