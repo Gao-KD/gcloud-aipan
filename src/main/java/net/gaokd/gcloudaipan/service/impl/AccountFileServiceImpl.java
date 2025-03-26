@@ -353,7 +353,8 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param targetParentId
      * @return
      */
-    private List<AccountFileDO> findBatchCopyFileWithRecur(List<AccountFileDO> accountFileDOList, Long targetParentId) {
+    @Override
+    public List<AccountFileDO> findBatchCopyFileWithRecur(List<AccountFileDO> accountFileDOList, Long targetParentId) {
         List<AccountFileDO> newAccountFileDOList = new ArrayList<>();
         accountFileDOList.forEach(accountFileDO -> doCopyChildRecord(newAccountFileDOList, accountFileDO, targetParentId));
         return newAccountFileDOList;
@@ -516,7 +517,8 @@ public class AccountFileServiceImpl implements AccountFileService {
      * @param prepareAccountFileDOList
      * @param onlyFolder
      */
-    private void findAllAccountFileDOWithRecur(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder) {
+    @Override
+    public void findAllAccountFileDOWithRecur(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder) {
         for (AccountFileDO prepare : prepareAccountFileDOList) {
             if (Objects.equals(prepare.getIsDir(), FolderFlagEnum.YES.getCode())) {
                 List<AccountFileDO> children = accountFileMapper.selectList(new LambdaQueryWrapper<AccountFileDO>()

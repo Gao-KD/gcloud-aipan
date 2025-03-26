@@ -52,4 +52,10 @@ public interface AccountFileService {
 
     //校验文件列表id是否合法
     List<AccountFileDO> checkFileIdIllegal(List<Long> fileIds, Long accountId);
+
+    //递归查询所有文件
+   void findAllAccountFileDOWithRecur(List<AccountFileDO> allAccountFileDOList, List<AccountFileDO> prepareAccountFileDOList, boolean onlyFolder);
+
+   // 执行拷贝，递归查找
+    List<AccountFileDO> findBatchCopyFileWithRecur(List<AccountFileDO> accountFileDOList, Long targetParentId);
 }

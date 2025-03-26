@@ -25,7 +25,7 @@ public enum BizCodeEnum {
     SHARE_CANCEL_ILLEGAL( 260403, "取消分享失败,参数不合法"),
     SHARE_CODE_ILLEGAL( 260404, "分享码不合法"),
     SHARE_NOT_EXIST( 260405, "分享不存在"),
-    SHARE_CANCEL( 260406, "分享已取消"),
+    SHARE_CANCELED( 260406, "分享已取消"),
     SHARE_EXPIRED( 260407, "分享已过期"),
     SHARE_FILE_ILLEGAL( 260408, "分享的文件不合规"),
     FILE_REMOTE_UPLOAD_FAILED(260409,"上传文件到minio异常" ),
